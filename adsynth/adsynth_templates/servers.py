@@ -1,0 +1,1 @@
+T1_SERVERS = ['Application','Print','Database']

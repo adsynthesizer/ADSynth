@@ -1,0 +1,17 @@
+# Ref: https://posts.specterops.io/what-is-tier-zero-part-1-e0da9b7cdfca
+TIER_0_DEFAULT_GROUPS = [
+   "ENTERPRISE ADMINS",
+   "DOMAIN ADMINS",
+   "ADMINISTRATORS",
+   "SCHEMA ADMINS",
+   "ACCOUNT OPERATORS",
+   "BACKUP OPERATORS",
+   "PRINT OPERATORS",
+   "SERVER OPERATORS",
+   "DOMAIN CONTROLLERS",
+   "CRYPTOGRAPHIC OPERATORS",
+   "DISTRIBUTED COM USERS"
+]
+
+def get_t0_default_groups():
+  return TIER_0_DEFAULT_GROUPS
