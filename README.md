@@ -4,16 +4,16 @@ design guidelines and security principles from Microsoft and prestigious organiz
 
 Please head to our <a href="https://adsynthesizer.github.io/">website</a> for more details.
 
-# REQUIREMENTS
+## REQUIREMENTS
 * Python 3
 
-# INSTALLATION
+## INSTALLATION
 ```
 $ git clone https://github.com/adsynthesizer/ADSynth.git
 $ pip install -r requirements.txt
 ```
 
-# EXECUTION
+## EXECUTION
 1. Navigate to the folder ADSynth
 ```
 $ cd <YOUR-PATH>/ADSynth
