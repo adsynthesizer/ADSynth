@@ -179,23 +179,23 @@ class MainMenu(cmd.Cmd):
 
     
     def help_dbconfig(self):
-        print("Configure database connection parameters")
+        print("Configure database level of security")
 
 
-    def help_connect(self):
-        print("Test connection to the database and verify credentials")
+    # def help_connect(self):
+    #     print("Test connection to the database and verify credentials")
 
  
     def help_setdomain(self):
         print("Set domain name (default 'TESTLAB.LOCALE')")
 
  
-    def help_cleardb(self):
-        print("Clear the database and set constraints")
+    # def help_cleardb(self):
+    #     print("Clear the database and set constraints")
 
  
     def help_generate(self):
-        print("Connect to the database, clear the db, set the schema, and generate random data")
+        print("Generate an Active Directory attack graph based on the given parameters")
 
 
     def help_setparams(self):
@@ -209,31 +209,14 @@ class MainMenu(cmd.Cmd):
     def help_exit(self):
         print("Exit")
     
-    def help_remove_constraints(self):
-        print("Remove Neo4J constraints")
+    # def help_remove_constraints(self):
+    #     print("Remove Neo4J constraints")
       
 
     def do_about(self, args):
         print_adsynth_software_information()
 
- 
     def do_dbconfig(self, args):
-        print("Current Settings")
-        print("DB Url: {}".format(self.url))
-        print("DB Username: {}".format(self.username))
-        print("DB Password: {}".format(self.password))
-        print("Use encryption: {}".format(self.use_encryption))
-        print("")
-
-        self.url = self.m.input_default("Enter DB URL", self.url)
-        self.username = self.m.input_default(
-            "Enter DB Username", self.username)
-        self.password = self.m.input_default(
-            "Enter DB Password", self.password)
-
-        self.use_encryption = self.m.input_yesno(
-            "Use encryption?", self.use_encryption)
-        
         # Level of security
         security_settings = {
             1: "Customized",
@@ -249,17 +232,52 @@ class MainMenu(cmd.Cmd):
         level_code = self.m.input_security_level(
             "Enter level of security  (type a number 1/2/3) - Cuztomized (1), Low (2), High (3): ", security_settings_code[self.level])
         self.level = security_settings[level_code]
-
-        print("")
-        print("Confirmed Settings:")
-        print("DB Url: {}".format(self.url))
-        print("DB Username: {}".format(self.username))
-        print("DB Password: {}".format(self.password))
-        print("Use encryption: {}".format(self.use_encryption))
         print("Level of Security: {}".format(self.level))
-        print("")
-        print("Testing DB Connection")
-        self.test_db_conn()
+    
+
+    # def do_dbconfig(self, args):
+    #     print("Current Settings")
+    #     print("DB Url: {}".format(self.url))
+    #     print("DB Username: {}".format(self.username))
+    #     print("DB Password: {}".format(self.password))
+    #     print("Use encryption: {}".format(self.use_encryption))
+    #     print("")
+
+    #     self.url = self.m.input_default("Enter DB URL", self.url)
+    #     self.username = self.m.input_default(
+    #         "Enter DB Username", self.username)
+    #     self.password = self.m.input_default(
+    #         "Enter DB Password", self.password)
+
+    #     self.use_encryption = self.m.input_yesno(
+    #         "Use encryption?", self.use_encryption)
+        
+    #     # Level of security
+    #     security_settings = {
+    #         1: "Customized",
+    #         2: "Low",
+    #         3: "High"
+    #     }
+    #     security_settings_code = {
+    #         "Customized": 1,
+    #         "Low": 2,
+    #         "High": 3
+    #     }
+
+    #     level_code = self.m.input_security_level(
+    #         "Enter level of security  (type a number 1/2/3) - Cuztomized (1), Low (2), High (3): ", security_settings_code[self.level])
+    #     self.level = security_settings[level_code]
+
+    #     print("")
+    #     print("Confirmed Settings:")
+    #     print("DB Url: {}".format(self.url))
+    #     print("DB Username: {}".format(self.username))
+    #     print("DB Password: {}".format(self.password))
+    #     print("Use encryption: {}".format(self.use_encryption))
+    #     print("Level of Security: {}".format(self.level))
+    #     print("")
+    #     print("Testing DB Connection")
+    #     self.test_db_conn()
 
  
     def do_setdomain(self, args):
@@ -281,79 +299,79 @@ class MainMenu(cmd.Cmd):
         raise KeyboardInterrupt
 
  
-    def do_connect(self, args):
-        self.test_db_conn()
+    # def do_connect(self, args):
+    #     self.test_db_conn()
 
 
-    def do_remove_constraints(self, session):
-        # Remove constraint - From DBCreator
-        print("Resetting Schema")
-        for constraint in session.run("SHOW CONSTRAINTS"):
-            session.run("DROP CONSTRAINT {}".format(constraint['name']))
+    # def do_remove_constraints(self, session):
+    #     # Remove constraint - From DBCreator
+    #     print("Resetting Schema")
+    #     for constraint in session.run("SHOW CONSTRAINTS"):
+    #         session.run("DROP CONSTRAINT {}".format(constraint['name']))
 
-        icount = session.run(
-            "SHOW INDEXES YIELD name RETURN count(*)")
-        for r in icount:
-            ic = int(r['count(*)'])
+    #     icount = session.run(
+    #         "SHOW INDEXES YIELD name RETURN count(*)")
+    #     for r in icount:
+    #         ic = int(r['count(*)'])
                 
-        while ic >0:
-            print("Deleting indices from database")
+    #     while ic >0:
+    #         print("Deleting indices from database")
         
-            showall = session.run(
-                "SHOW INDEXES")
-            for record in showall:
-                name = (record['name'])
-                session.run("DROP INDEX {}".format(name))
-            ic = 0
+    #         showall = session.run(
+    #             "SHOW INDEXES")
+    #         for record in showall:
+    #             name = (record['name'])
+    #             session.run("DROP INDEX {}".format(name))
+    #         ic = 0
          
-        # Setting constraints
-        print("Setting constraints")
+    #     # Setting constraints
+    #     print("Setting constraints")
 
-        constraints = [
-                "CREATE CONSTRAINT FOR (n:Base) REQUIRE n.neo4jImportId IS UNIQUE;",
-                "CREATE CONSTRAINT FOR (n:Domain) REQUIRE n.neo4jImportId IS UNIQUE;",
-                "CREATE CONSTRAINT FOR (n:Computer) REQUIRE n.neo4jImportId IS UNIQUE;",
-                "CREATE CONSTRAINT FOR (n:User) REQUIRE n.neo4jImportId IS UNIQUE;",
-                "CREATE CONSTRAINT FOR (n:OU) REQUIRE n.neo4jImportId IS UNIQUE;",
-                "CREATE CONSTRAINT FOR (n:GPO) REQUIRE n.neo4jImportId IS UNIQUE;",
-                "CREATE CONSTRAINT FOR (n:Compromised) REQUIRE n.neo4jImportId IS UNIQUE;",
-                "CREATE CONSTRAINT FOR (n:Group) REQUIRE n.neo4jImportId IS UNIQUE;",
-                "CREATE CONSTRAINT FOR (n:Container) REQUIRE n.neo4jImportId IS UNIQUE;",
-        ]
+    #     constraints = [
+    #             "CREATE CONSTRAINT FOR (n:Base) REQUIRE n.neo4jImportId IS UNIQUE;",
+    #             "CREATE CONSTRAINT FOR (n:Domain) REQUIRE n.neo4jImportId IS UNIQUE;",
+    #             "CREATE CONSTRAINT FOR (n:Computer) REQUIRE n.neo4jImportId IS UNIQUE;",
+    #             "CREATE CONSTRAINT FOR (n:User) REQUIRE n.neo4jImportId IS UNIQUE;",
+    #             "CREATE CONSTRAINT FOR (n:OU) REQUIRE n.neo4jImportId IS UNIQUE;",
+    #             "CREATE CONSTRAINT FOR (n:GPO) REQUIRE n.neo4jImportId IS UNIQUE;",
+    #             "CREATE CONSTRAINT FOR (n:Compromised) REQUIRE n.neo4jImportId IS UNIQUE;",
+    #             "CREATE CONSTRAINT FOR (n:Group) REQUIRE n.neo4jImportId IS UNIQUE;",
+    #             "CREATE CONSTRAINT FOR (n:Container) REQUIRE n.neo4jImportId IS UNIQUE;",
+    #     ]
 
-        for constraint in constraints:
-            try:
-                session.run(constraint)
-            except:
-                continue
+    #     for constraint in constraints:
+    #         try:
+    #             session.run(constraint)
+    #         except:
+    #             continue
         
 
-        session.run("match (a) -[r] -> () delete a, r")
-        session.run("match (a) delete a")
+    #     session.run("match (a) -[r] -> () delete a, r")
+    #     session.run("match (a) delete a")
 
 
-    def do_cleardb(self, args):
-        if not self.connected:
-            print("Not connected to database. Use connect first")
-            return
+    # def do_cleardb(self, args):
+    #     if not self.connected:
+    #         print("Not connected to database. Use connect first")
+    #         return
 
-        print("Clearing Database")
-        d = self.driver
-        session = d.session()
+    #     print("Clearing Database")
+    #     d = self.driver
+    #     session = d.session()
 
-        # Delete nodes and edges with batching into 10k objects - From DBCreator
-        total = 1
-        while total > 0:
-            result = session.run(
-                "MATCH (n) WITH n LIMIT 10000 DETACH DELETE n RETURN count(n)")
-            for r in result:
-                total = int(r['count(n)'])
+    #     # Delete nodes and edges with batching into 10k objects - From DBCreator
+    #     total = 1
+    #     while total > 0:
+    #         result = session.run(
+    #             "MATCH (n) WITH n LIMIT 10000 DETACH DELETE n RETURN count(n)")
+    #         for r in result:
+    #             total = int(r['count(n)'])
         
-        self.do_remove_constraints(session)
+    #     self.do_remove_constraints(session)
 
-        session.close()
+    #     session.close()
 
-        print("DB Cleared and Schema Set")
+    #     print("DB Cleared and Schema Set")
     
 
     def do_setparams(self, args):
@@ -368,7 +386,7 @@ class MainMenu(cmd.Cmd):
             except ValueError:
                 pass
 
-        json_path = self.m.input_default("Parameters JSON file", self.parameters_json_path)
+        json_path = self.m.input_default("Parameters JSON file (copy and paste the full path of your parameter JSON file)", self.parameters_json_path)
         self.parameters = get_parameters_from_json(json_path)
         if self.parameters == DEFAULT_CONFIGURATIONS:
             self.parameters_json_path = "DEFAULT"
@@ -401,8 +419,10 @@ class MainMenu(cmd.Cmd):
             except ValueError:
                 self.json_file_name = None
 
-        self.test_db_conn()
-        self.do_cleardb("a")
+        # Disable Neo4J from ADSynth
+        # self.test_db_conn()
+        # self.do_cleardb("a")
+
         reset_DB()
         
         self.generate_data()
@@ -413,10 +433,11 @@ class MainMenu(cmd.Cmd):
         start_ = timer()
         seed_number = get_single_int_param_value("seed", self.parameters)
         if seed_number > 0:
-            random.seed()
-        if not self.connected:
-            print("Not connected to database. Use connect first")
-            return
+            random.seed(seed_number)
+
+        # if not self.connected:
+        #     print("Not connected to database. Use connect first")
+        #     return
         
         domain_dn = get_domain_dn(self.domain)
 
@@ -433,7 +454,7 @@ class MainMenu(cmd.Cmd):
 
         convert_to_digraph = get_single_int_param_value("convert_to_directed_graphs", self.parameters)
         
-        session = self.driver.session()
+        # session = self.driver.session()
 
         print(f"Initiating the Active Directory Domain - {self.domain}")
         functional_level = create_domain(self.domain, self.base_sid, domain_dn, self.parameters) # Ref: ADSimulator, DBCreator
@@ -715,7 +736,7 @@ class MainMenu(cmd.Cmd):
         path = f"{os.getcwd()}/generated_datasets/{filename}.json"
         query = f"PROFILE CALL apoc.periodic.iterate(\"CALL apoc.import.json('{path}')\", \"RETURN 1\", {{batchSize:1000}})"
         # session.run(query)
-        session.close()
+        # session.close()
 
         print("Database Generation Finished!")
 
