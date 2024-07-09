@@ -8,7 +8,7 @@
 # 	cleardb - Clears the database and sets the schema properly
 #	generate - Connects to the database, clears the DB, sets the schema, and generates random data
 
-from neo4j import GraphDatabase
+# from neo4j import GraphDatabase
 import cmd
 from collections import defaultdict
 import uuid
