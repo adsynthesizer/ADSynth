@@ -32,7 +32,7 @@ The generated graphs are located at the folder **generated_datasets**. The outpu
 
 The output should include one JSON object per line, either a node or relationship, containing id, type, properties and labels.
 
-The JSON file can be loaded in Neo4J using APOC library. After that, the graph can be visualised by <a href="https://bloodhound.readthedocs.io/en/latest/">BloodHound</a>.
+The JSON file can be loaded in Neo4J using APOC library. After that, the graph can be visualised in <a href="https://bloodhound.readthedocs.io/en/latest/">BloodHound</a>.
 
 For example:
 * Node: {"id":"0","labels":["Base","User"],"properties":{...},"type":"node"}
