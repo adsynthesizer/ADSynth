@@ -9,6 +9,7 @@
 #	generate - Connects to the database, clears the DB, sets the schema, and generates random data
 
 # from neo4j import GraphDatabase
+import getpass
 import cmd
 from collections import defaultdict
 import uuid
@@ -79,6 +80,17 @@ def reset_DB():
 
     KERBEROASTABLES.clear() # processed names
 
+neo4j = None
+def safe_import_neo4j():
+    global neo4j
+    try:
+        import neo4j as neo4j_lib
+        neo4j = neo4j_lib
+        return neo4j
+    except ImportError:
+        print("The 'neo4j' module is not installed. Please install it using 'pip install -r requirements.txt'.")
+        return None
+    
 class Messages():
     def title(self):
         print(
@@ -108,6 +120,15 @@ class Messages():
     # Ref: DBCreator
     def input_default(self, prompt, default):
         return input("%s [%s] " % (prompt, default)) or default
+    
+    def input_default_password(self, prompt, default, hide_input=False):
+        if hide_input:
+            # Use getpass to securely input passwords
+            prompt_with_default = f"{prompt} [{default}] "
+            return getpass.getpass(prompt_with_default) or default
+        else:
+            # Regular input for other types of data
+            return input(f"{prompt} [{default}] ") or default
     
     def input_security_level(self, prompt, default):
         user_input = input("%s [%s] " % (prompt, default)) or default
@@ -157,6 +178,7 @@ class MainMenu(cmd.Cmd):
         self.parameters = DEFAULT_CONFIGURATIONS
         self.json_file_name = None
         self.level = "Customized"
+        self.dbname = None
 
         cmd.Cmd.__init__(self)
 
@@ -178,20 +200,22 @@ class MainMenu(cmd.Cmd):
                 return True
 
     
-    def help_dbconfig(self):
-        print("Configure database level of security")
+    def help_adconfig(self):
+        print("Configure AD level of security")
 
+    def help_neo4jconfig(self):
+        print("Configure Neo4J database")
 
-    # def help_connect(self):
-    #     print("Test connection to the database and verify credentials")
+    def help_connect(self):
+        print("Test connection to the database and verify credentials")
 
  
     def help_setdomain(self):
         print("Set domain name (default 'TESTLAB.LOCALE')")
 
  
-    # def help_cleardb(self):
-    #     print("Clear the database and set constraints")
+    def help_cleardb(self):
+        print("Clear the Neo4J database and set constraints")
 
  
     def help_generate(self):
@@ -205,6 +229,9 @@ class MainMenu(cmd.Cmd):
     def help_about(self):
         print("View information about adsynth")
 
+    def help_importdb(self):
+        print("Import a JSON file to Neo4J")
+
  
     def help_exit(self):
         print("Exit")
@@ -216,7 +243,7 @@ class MainMenu(cmd.Cmd):
     def do_about(self, args):
         print_adsynth_software_information()
 
-    def do_dbconfig(self, args):
+    def do_adconfig(self, args):
         # Level of security
         security_settings = {
             1: "Customized",
@@ -235,49 +262,37 @@ class MainMenu(cmd.Cmd):
         print("Level of Security: {}".format(self.level))
     
 
-    # def do_dbconfig(self, args):
-    #     print("Current Settings")
-    #     print("DB Url: {}".format(self.url))
-    #     print("DB Username: {}".format(self.username))
-    #     print("DB Password: {}".format(self.password))
-    #     print("Use encryption: {}".format(self.use_encryption))
-    #     print("")
-
-    #     self.url = self.m.input_default("Enter DB URL", self.url)
-    #     self.username = self.m.input_default(
-    #         "Enter DB Username", self.username)
-    #     self.password = self.m.input_default(
-    #         "Enter DB Password", self.password)
-
-    #     self.use_encryption = self.m.input_yesno(
-    #         "Use encryption?", self.use_encryption)
+    def do_neo4jconfig(self, args):
+        global neo4j
+        neo4j = safe_import_neo4j()
+        if neo4j is None:
+            return
         
-    #     # Level of security
-    #     security_settings = {
-    #         1: "Customized",
-    #         2: "Low",
-    #         3: "High"
-    #     }
-    #     security_settings_code = {
-    #         "Customized": 1,
-    #         "Low": 2,
-    #         "High": 3
-    #     }
+        print("Current Settings")
+        print("DB Url: {}".format(self.url))
+        print("DB Username: {}".format(self.username))
+        print("DB Password: {}".format(self.password))
+        print("Use encryption: {}".format(self.use_encryption))
+        print("")
 
-    #     level_code = self.m.input_security_level(
-    #         "Enter level of security  (type a number 1/2/3) - Cuztomized (1), Low (2), High (3): ", security_settings_code[self.level])
-    #     self.level = security_settings[level_code]
+        self.url = self.m.input_default("Enter DB URL", self.url)
+        self.username = self.m.input_default(
+            "Enter DB Username", self.username)
+        self.password = self.m.input_default_password(
+            "Enter DB Password", self.password)
+        self.use_encryption = self.m.input_yesno(
+            "Use encryption?", self.use_encryption)
 
-    #     print("")
-    #     print("Confirmed Settings:")
-    #     print("DB Url: {}".format(self.url))
-    #     print("DB Username: {}".format(self.username))
-    #     print("DB Password: {}".format(self.password))
-    #     print("Use encryption: {}".format(self.use_encryption))
-    #     print("Level of Security: {}".format(self.level))
-    #     print("")
-    #     print("Testing DB Connection")
-    #     self.test_db_conn()
+
+        print("")
+        print("Confirmed Settings:")
+        print("DB Url: {}".format(self.url))
+        print("DB Username: {}".format(self.username))
+        print("DB Password: {}".format(self.password))
+        print("Use encryption: {}".format(self.use_encryption))
+        print("")
+        print("Testing DB Connection")
+        self.test_db_conn()
 
  
     def do_setdomain(self, args):
@@ -299,79 +314,79 @@ class MainMenu(cmd.Cmd):
         raise KeyboardInterrupt
 
  
-    # def do_connect(self, args):
-    #     self.test_db_conn()
+    def do_connect(self, args):
+        self.test_db_conn()
 
 
-    # def do_remove_constraints(self, session):
-    #     # Remove constraint - From DBCreator
-    #     print("Resetting Schema")
-    #     for constraint in session.run("SHOW CONSTRAINTS"):
-    #         session.run("DROP CONSTRAINT {}".format(constraint['name']))
+    def remove_constraints(self, session):
+        # Remove constraint - From DBCreator
+        print("Resetting Schema")
+        for constraint in session.run("SHOW CONSTRAINTS"):
+            session.run("DROP CONSTRAINT {}".format(constraint['name']))
 
-    #     icount = session.run(
-    #         "SHOW INDEXES YIELD name RETURN count(*)")
-    #     for r in icount:
-    #         ic = int(r['count(*)'])
+        icount = session.run(
+            "SHOW INDEXES YIELD name RETURN count(*)")
+        for r in icount:
+            ic = int(r['count(*)'])
                 
-    #     while ic >0:
-    #         print("Deleting indices from database")
+        while ic >0:
+            print("Deleting indices from database")
         
-    #         showall = session.run(
-    #             "SHOW INDEXES")
-    #         for record in showall:
-    #             name = (record['name'])
-    #             session.run("DROP INDEX {}".format(name))
-    #         ic = 0
+            showall = session.run(
+                "SHOW INDEXES")
+            for record in showall:
+                name = (record['name'])
+                session.run("DROP INDEX {}".format(name))
+            ic = 0
          
-    #     # Setting constraints
-    #     print("Setting constraints")
+        # Setting constraints
+        print("Setting constraints")
 
-    #     constraints = [
-    #             "CREATE CONSTRAINT FOR (n:Base) REQUIRE n.neo4jImportId IS UNIQUE;",
-    #             "CREATE CONSTRAINT FOR (n:Domain) REQUIRE n.neo4jImportId IS UNIQUE;",
-    #             "CREATE CONSTRAINT FOR (n:Computer) REQUIRE n.neo4jImportId IS UNIQUE;",
-    #             "CREATE CONSTRAINT FOR (n:User) REQUIRE n.neo4jImportId IS UNIQUE;",
-    #             "CREATE CONSTRAINT FOR (n:OU) REQUIRE n.neo4jImportId IS UNIQUE;",
-    #             "CREATE CONSTRAINT FOR (n:GPO) REQUIRE n.neo4jImportId IS UNIQUE;",
-    #             "CREATE CONSTRAINT FOR (n:Compromised) REQUIRE n.neo4jImportId IS UNIQUE;",
-    #             "CREATE CONSTRAINT FOR (n:Group) REQUIRE n.neo4jImportId IS UNIQUE;",
-    #             "CREATE CONSTRAINT FOR (n:Container) REQUIRE n.neo4jImportId IS UNIQUE;",
-    #     ]
+        constraints = [
+                "CREATE CONSTRAINT FOR (n:Base) REQUIRE n.neo4jImportId IS UNIQUE;",
+                "CREATE CONSTRAINT FOR (n:Domain) REQUIRE n.neo4jImportId IS UNIQUE;",
+                "CREATE CONSTRAINT FOR (n:Computer) REQUIRE n.neo4jImportId IS UNIQUE;",
+                "CREATE CONSTRAINT FOR (n:User) REQUIRE n.neo4jImportId IS UNIQUE;",
+                "CREATE CONSTRAINT FOR (n:OU) REQUIRE n.neo4jImportId IS UNIQUE;",
+                "CREATE CONSTRAINT FOR (n:GPO) REQUIRE n.neo4jImportId IS UNIQUE;",
+                "CREATE CONSTRAINT FOR (n:Compromised) REQUIRE n.neo4jImportId IS UNIQUE;",
+                "CREATE CONSTRAINT FOR (n:Group) REQUIRE n.neo4jImportId IS UNIQUE;",
+                "CREATE CONSTRAINT FOR (n:Container) REQUIRE n.neo4jImportId IS UNIQUE;",
+        ]
 
-    #     for constraint in constraints:
-    #         try:
-    #             session.run(constraint)
-    #         except:
-    #             continue
+        for constraint in constraints:
+            try:
+                session.run(constraint)
+            except:
+                continue
         
 
-    #     session.run("match (a) -[r] -> () delete a, r")
-    #     session.run("match (a) delete a")
+        session.run("match (a) -[r] -> () delete a, r")
+        session.run("match (a) delete a")
 
 
-    # def do_cleardb(self, args):
-    #     if not self.connected:
-    #         print("Not connected to database. Use connect first")
-    #         return
+    def do_cleardb(self, args):
+        if not self.connected:
+            print("Not connected to database. Use connect first")
+            return
 
-    #     print("Clearing Database")
-    #     d = self.driver
-    #     session = d.session()
+        print("Clearing Database")
+        d = self.driver
+        session = d.session()
 
-    #     # Delete nodes and edges with batching into 10k objects - From DBCreator
-    #     total = 1
-    #     while total > 0:
-    #         result = session.run(
-    #             "MATCH (n) WITH n LIMIT 10000 DETACH DELETE n RETURN count(n)")
-    #         for r in result:
-    #             total = int(r['count(n)'])
+        # Delete nodes and edges with batching into 10k objects - From DBCreator
+        total = 1
+        while total > 0:
+            result = session.run(
+                "MATCH (n) WITH n LIMIT 10000 DETACH DELETE n RETURN count(n)")
+            for r in result:
+                total = int(r['count(n)'])
         
-    #     self.do_remove_constraints(session)
+        self.remove_constraints(session)
 
-    #     session.close()
+        session.close()
 
-    #     print("DB Cleared and Schema Set")
+        print("DB Cleared and Schema Set")
     
 
     def do_setparams(self, args):
@@ -397,17 +412,67 @@ class MainMenu(cmd.Cmd):
 
 
     def test_db_conn(self):
-        self.connected = False
-        if self.driver is not None:
-            self.driver.close()
+        if neo4j is None:
+            print("Please setup Neo4J database first using 'neo4jconfig'")
+            return
+        
         try:
-            self.driver = GraphDatabase.driver(
+            if self.driver is not None:
+                self.driver.close()
+            self.driver = neo4j.GraphDatabase.driver(
                 self.url, auth=(self.username, self.password), encrypted=self.use_encryption)
+            with self.driver.session() as session:
+                result = session.run("RETURN 1")
             self.connected = True
             print("Database Connection Successful!")
+        except neo4j.exceptions.AuthError:
+            print("Authentication failed: Incorrect username or password.")
+        except neo4j.exceptions.ServiceUnavailable:
+            print("Neo4J Service unavailable: Unable to connect to the database. Please make sure you have activated Neo4J.")
         except:
             self.connected = False
             print("Database Connection Failed. Check your settings.")
+
+
+    def do_importdb(self, args):
+        if not self.connected:
+            print("Neo4J connection has not been configured yet. Please proceed 'neo4jconfig' first.")
+            return
+        print("Please input the name of a JSON file in the folder 'generated_datasets' (excluding the file extension). Otherwise, provide the full path to your intended JSON file")
+        print("If you want to import the dataset you have just generated in this terminal, please click Enter")
+        dataset_name = input("Dataset to be imported: ")
+        if not dataset_name:
+            if self.dbname is None:
+                print("No dataset generated recently")
+                return
+            path = f"{os.getcwd()}/generated_datasets/{self.dbname}.json"
+        else:
+            path = f"{os.getcwd()}/generated_datasets/{dataset_name}.json"
+            if not os.path.exists(path):
+                path = dataset_name
+                if not os.path.exists(path):
+                    print("There is no such file.")
+                    return
+        try:        
+            self.test_db_conn()
+        except:
+            return
+
+        session = self.driver.session()
+
+        try:
+            self.do_cleardb("a")
+            query = f"PROFILE CALL apoc.periodic.iterate(\"CALL apoc.import.json('{path}')\", \"RETURN 1\", {{batchSize:1000}})"
+            print("========== IMPORT PROCESS ==========")
+            session.run(query)
+            print("Import has finished")
+        except neo4j.exceptions.Neo4jError as e:
+            print(f"Neo4jError occurred: {e}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+        session.close()
+
 
     def do_generate(self, args):
         
@@ -713,6 +778,7 @@ class MainMenu(cmd.Cmd):
         current_datetime = datetime.now()
         # Format the date and time to include seconds
         filename = current_datetime.strftime("%Y-%m-%d_%H-%M-%S-%f")[:-3]
+        
         with open(f"generated_datasets/{filename}.json", "w") as f:
             for obj in NODES:
                 obj["type"] = "node"
@@ -728,6 +794,8 @@ class MainMenu(cmd.Cmd):
                 json_str = json.dumps(obj, separators=(',', ':'))
                 # Write the JSON string to the file with a newline character
                 f.write(json_str + '\n')
+        
+        self.dbname = filename
         # ===============================================
         
         end_ = timer()
