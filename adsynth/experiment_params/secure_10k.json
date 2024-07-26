@@ -157,5 +157,6 @@
     },
     "nLocations": 5,
     "convert_to_directed_graphs": 0,
-    "seed": 1
+    "seed": 1,
+    "graph_name": "secure_10k"
 }
