@@ -725,3 +725,152 @@ class MainMenu(cmd.Cmd):
         query = "CALL apoc.export.json.all('" + json_path + "',{useTypes:true})"
         session.run(query)
         print("Graph exported in", json_path)
+
+
+
+    def do_graph(self, args):
+        passed = args
+        data =[]
+        if passed != "":
+            try:
+                json_path = passed
+                with open(json_path, 'r') as file:
+                    for line in file:
+                        json_data = json.loads(line)
+                        data.append(json_data)
+            except json.JSONDecodeError as e:
+                print(f"JSONDecodeError: {e}")
+        
+        nodes = []
+        for i in data:
+            if i['type']=='node':
+                nodes.append(i)
+
+        class Nodes():
+            def __init__(self, ID:str, labels:list, properties:dict):
+                self.id = ID
+                self.labels = labels
+                self.properties = properties
+                self.name = self.properties['name']
+
+        n_dict = {}
+        for i in nodes:
+            n_dict[i['id']] = Nodes(i['id'],i['labels'],i['properties'])
+
+        cluster_relation = []
+        edges = []
+        member_relation = []
+        session_relation = []
+
+        for i in data:
+            if i['type']=='relationship':
+                if i['label']=='Contains':
+                    if ('Container' in i['start']['labels']) and ('Container' not in i['end']['labels']):
+                        cluster_relation.append(i)
+                    elif ('OU' in i['start']['labels']) and ('OU' not in i['end']['labels']):
+                        cluster_relation.append(i)
+                    else:
+                        edges.append(i)
+                
+                elif i['label']=='MemberOf':
+                    member_relation.append(i)
+        
+                elif i['label']=='HasSession':
+                    session_relation.append(i)
+        
+                else:
+                    edges.append(i)
+        
+        cluster ={}
+        for i in cluster_relation:
+            if i['start']['id'] not in cluster.keys():
+                cluster[i['start']['id']] = list([i['end']['id']])
+            else:
+                cluster[i['start']['id']].append(i['end']['id'])
+
+        edges_pair ={}
+        edges_filtered =[]
+
+        for e in edges:
+            if e['label']=='Contains':
+                if e['end']['id'] not in edges_pair.keys():
+                    edges_pair[e['end']['id']] = list([e['start']['id']])
+                    edges_filtered.append(e)
+                elif e['end']['id'] in edges_pair.keys() and e['start']['id'] not in edges_pair[e['end']['id']]:
+                    edges_pair[e['end']['id']].append(e['start']['id'])
+                    edges_filtered.append(e)
+                else:
+                    pass
+            else:
+                if e['start']['id'] not in edges_pair.keys():
+                    edges_pair[e['start']['id']] = list([e['end']['id']])
+                    edges_filtered.append(e)
+                elif e['start']['id'] in edges_pair.keys() and e['end']['id'] not in edges_pair[e['start']['id']]:
+                    edges_pair[e['start']['id']].append(e['end']['id'])
+                    edges_filtered.append(e)
+                else:
+                    pass
+
+        ##create dot file
+        dot_string = ['digraph {',
+                      '  compound=true;',
+                      '  overlap = false;', #overlap = scale
+                      '  splines=true;',
+                      '  rankdir=LR;'] #layout=neato;rankdir=LR;
+
+        ##create nodes from n_dict
+        for node in n_dict.values():
+            if "Compromised" in node.labels:
+                dot_string.append(f'  "{node.id}" [style=filled, fillcolor=red, label="{node.name}"];')
+            else:
+                dot_string.append(f'  "{node.id}" [label="{node.name}"];')
+
+
+        ##create cluster for set
+        for s in cluster.items():
+            dot_string.append(f'  subgraph cluster_{s[0]} '"{")
+            dot_string.append(f'  style=filled;')
+            dot_string.append(f'  color=lightblue;')
+            nod = ""
+            for n in s[1]:
+                nod += '"'
+                nod += n      
+                nod += '" '
+            dot_string.append(f'  {nod};')
+            dot_string.append("  }")
+            pt_cluster = ""
+            pt_cluster += s[1][0]
+            dot_string.append(f'  "{pt_cluster}" -> "{s[0]}" [ltail=cluster_{s[0]}, label="Contains_in", color=blue];')
+    
+        ##create edges from edges
+        for e in edges_filtered:
+            if e['label']=='Contains':
+                dot_string.append(f'  "{e["end"]["id"]}" -> "{e["start"]["id"]}" [label="Contains_in"];')
+            else:
+                dot_string.append(f'  "{e["start"]["id"]}" -> "{e["end"]["id"]}" [label="{e["label"]}"];')
+
+        dot_string.append('}')
+
+        print("Dump to dot file")
+        filename = 'metagraph_wip'
+        with open(f"generated_graphs/{filename}.gv", 'w') as file:
+            for line in dot_string:
+                file.write(line+'\n')
+        
+        from graphviz import Source
+
+        with open(f"generated_graphs/{filename}.gv", 'r') as file:
+            dot_contents = file.read()
+    
+        graph = Source(dot_contents)
+        outpath = f"generated_graphs/{filename}.pdf"
+        graph.render(outfile = outpath)
+        print("Graph generation success")
+
+        with open(f"generated_graphs/{filename}_membership.txt", 'w') as file:
+            for line in member_relation:
+                file.write(str(line)+'\n')
+        
+
+
+
