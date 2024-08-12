@@ -851,6 +851,12 @@ class MainMenu(cmd.Cmd):
 
         dot_string.append('}')
 
+
+        folder = 'generated_graphs'
+        # Check if the folder exists, and create it if it doesn't
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+            
         print("Dump to dot file")
         filename = 'metagraph_wip'
         with open(f"generated_graphs/{filename}.gv", 'w') as file:
