@@ -822,6 +822,16 @@ class MainMenu(cmd.Cmd):
         for node in n_dict.values():
             if "Compromised" in node.labels:
                 dot_string.append(f'  "{node.id}" [style=filled, fillcolor=red, label="{node.name}"];')
+            elif "OU" in node.labels:
+                dot_string.append(f'  "{node.id}" [style=filled, fillcolor=pink, label="{node.name}"];')
+            elif "GPO" in node.labels:
+                dot_string.append(f'  "{node.id}" [style=filled, fillcolor=lightgreen, label="{node.name}"];')
+            elif "User" in node.labels:
+                dot_string.append(f'  "{node.id}" [style=filled, fillcolor=violet, label="{node.name}"];')
+            elif "Group" in node.labels:
+                dot_string.append(f'  "{node.id}" [style=filled, fillcolor=yellow, label="{node.name}"];')
+            elif "Domain" in node.labels:
+                dot_string.append(f'  "{node.id}" [style=filled, fillcolor=gold, label="{node.name}"];')
             else:
                 dot_string.append(f'  "{node.id}" [label="{node.name}"];')
 
@@ -831,6 +841,7 @@ class MainMenu(cmd.Cmd):
             dot_string.append(f'  subgraph cluster_{s[0]} '"{")
             dot_string.append(f'  style=filled;')
             dot_string.append(f'  color=lightblue;')
+            dot_string.append(f'  pencolor=blue;')
             nod = ""
             for n in s[1]:
                 nod += '"'
@@ -840,14 +851,16 @@ class MainMenu(cmd.Cmd):
             dot_string.append("  }")
             pt_cluster = ""
             pt_cluster += s[1][0]
-            dot_string.append(f'  "{pt_cluster}" -> "{s[0]}" [ltail=cluster_{s[0]}, label="Contains_in", color=blue];')
+            #dot_string.append(f'  "{pt_cluster}" -> "{s[0]}" [ltail=cluster_{s[0]}, label="Contains_in", color=blue];')
+            dot_string.append(f'  "{s[0]}" -> "{pt_cluster}" [lhead=cluster_{s[0]}, label="Contains", color=blue];')
     
         ##create edges from edges
         for e in edges_filtered:
-            if e['label']=='Contains':
-                dot_string.append(f'  "{e["end"]["id"]}" -> "{e["start"]["id"]}" [label="Contains_in"];')
-            else:
-                dot_string.append(f'  "{e["start"]["id"]}" -> "{e["end"]["id"]}" [label="{e["label"]}"];')
+            #if e['label']=='Contains':
+            #    dot_string.append(f'  "{e["end"]["id"]}" -> "{e["start"]["id"]}" [label="Contains_in"];')
+            #else:
+            #    dot_string.append(f'  "{e["start"]["id"]}" -> "{e["end"]["id"]}" [label="{e["label"]}"];')
+            dot_string.append(f'  "{e["start"]["id"]}" -> "{e["end"]["id"]}" [label="{e["label"]}"];')
 
         dot_string.append('}')
 
