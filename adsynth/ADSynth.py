@@ -766,7 +766,8 @@ class MainMenu(cmd.Cmd):
             if i['type']=='relationship':
                 if i['label']=='Contains':
                     if ('Container' in i['start']['labels']) and ('Container' not in i['end']['labels']):
-                        cluster_relation.append(i)
+                        #cluster_relation.append(i)
+                        pass
                     elif ('OU' in i['start']['labels']) and ('OU' not in i['end']['labels']):
                         cluster_relation.append(i)
                     else:
