@@ -119,8 +119,8 @@ def place_admin_users_in_tiers(domain_name, domain_sid, nTiers, admin, misconfig
         guid = get_sid_from_rid(ridcount[0], domain_sid)
         ridcount[0] += 1
 
-        keys = ["domain", "name", "objectid", "labels"]
-        values = [domain_name, user, guid, "User"]
+        keys = ["domain", "name", "objectid", "labels", "highvalue"]
+        values = [domain_name, user, guid, "User", True]
         id_lookup = guid
         node_operation("User", keys, values, id_lookup)
         
@@ -131,8 +131,8 @@ def place_admin_users_in_tiers(domain_name, domain_sid, nTiers, admin, misconfig
 
     # ADMIN USERS
     service_account_perc = get_perc_param_value("Admin", "service_account", parameters)
-    keys = ["admincount"]
-    values = [True]
+    keys = ["admincount", "highvalue"]
+    values = [True, True]
 
     for user in admin:
         tier = random.randrange(nTiers)
@@ -179,8 +179,12 @@ def place_normal_users_in_tiers(domain_name, enabled_users, disabled_users, misc
                     values = [True]
                 node_operation("User", keys, values, user, "name")
                 ENABLED_USERS[tier].append(user)
+                parent_name = f"T{tier} Enabled Users"
             else:
                 DISABLED_USERS[tier].append(user)
+                parent_name = f"T{tier} Disabled Users"
+            ous_dn = [f"Tier {tier}", f"T{tier} Users", parent_name]
+            add_dn(domain_name, user, object_type, ous_dn)
     
     add_normal_users(domain_name, nTiers, enabled_users, "User", True)
     add_normal_users(domain_name, nTiers, disabled_users, "User", False)

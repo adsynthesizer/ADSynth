@@ -151,11 +151,14 @@ def generate_computers(domain_name, domain_sid, num_nodes, computers, current_ti
     print_computer_generation_parameters(enabled_perc, has_laps_perc, unconstrained_delegation_perc, os_perc)
     for i in range(1, num_nodes + 1):
         PC_type = random.choice(PC_list)
+        highvalue = False
         if PC_type == 'PAW':
             comp_name = str('PAW')+"-{:05d}@{}".format(len(PAW), domain_name)
+            highvalue = True
             PAW.append(comp_name)
         elif PC_type == 'Server':
             comp_name = str('S')+"-{:05d}@{}".format(len(Server), domain_name)
+            highvalue = True
             Server.append(comp_name)
         else:
             comp_name = str('WS')+"-{:05d}@{}".format(len(Workstation), domain_name)
@@ -175,7 +178,7 @@ def generate_computers(domain_name, domain_sid, num_nodes, computers, current_ti
             exploitable = generate_boolean_value(exploitable_perc, get_complementary_value(exploitable_perc))
         else:
             exploitable = False
- 
+
         computer_property = {
             'id': get_sid_from_rid(ridcount[0], domain_sid),
             'props': {
@@ -183,7 +186,7 @@ def generate_computers(domain_name, domain_sid, num_nodes, computers, current_ti
                 'operatingsystem': os,
                 'enabled': enabled,
                 'haslaps': has_laps,
-                'highvalue': False,
+                'highvalue': highvalue,
                 'lastlogontimestamp': generate_timestamp(current_time),
                 'pwdlastset': generate_timestamp(current_time),
                 'serviceprincipalnames': generate_client_service_pricipal_names(comp_name),
