@@ -29,7 +29,7 @@ PYTHONPATH=<YOUR-PATH>/ADSynth/adsynth python -m adsynth
 
     <b>[OPTIONAL]</b>
 * ```neo4jconfig``` - Connect to Neo4J database
-* ```importdb``` - Import generated datasets to Neo4J
+* ```importdb``` - Import generated datasets to Neo4J. Before using this feature, please install the APOC library. Information can be found in the document **Neo4J_guides.pdf**.
 
 # Output graphs
 The generated graphs are located in the folder **generated_datasets**. The output format is <a href="https://neo4j.com/labs/apoc/4.1/export/json/">Neo4J format</a>.
