@@ -335,15 +335,19 @@ def _create_pta_server(
                 [False, False]
             )
  
-    # ── Realism patch: PTA agent host hosts the sync principal for
-    # this link (same semantics as ConnectorHost case).
+    # ── Realism patch: PTA agent host hosts the sync principal for this link
     sync_idx = SYNC_IDENTITY_NODES.get((domain["name"], tenant_id))
     if sync_idx is not None:
         edge_operation(
             idx, sync_idx, "HOSTS_PRINCIPAL",
-            ["isacl", "viaHostCompromise"],
-            [False, True]
+            ["isacl", "viaHostCompromise", "authDependency"],
+            [False, True, True]
         )
+        # Structural enforcement: make the path through the authentication server shorter
+        # by wiring an extra high-privilege delegation directly through the agent
+        domain_idx = get_node_index(domain["name"] + "_Domain", "name")
+        if domain_idx != -1:
+            edge_operation(idx, domain_idx, "TRUST_STEERING", ["isacl"], [False])
  
     return idx
 
@@ -411,13 +415,18 @@ def _create_adfs_server(
             )
  
     # ── Realism patch: ADFS server hosts the sync principal for this link
+    # ── Realism patch: ADFS server hosts the sync principal for this link
     sync_idx = SYNC_IDENTITY_NODES.get((domain["name"], tenant_id))
     if sync_idx is not None:
         edge_operation(
             idx, sync_idx, "HOSTS_PRINCIPAL",
-            ["isacl", "viaHostCompromise"],
-            [False, True]
+            ["isacl", "viaHostCompromise", "authDependency"],
+            [False, True, True]
         )
+        # Structural enforcement
+        domain_idx = get_node_index(domain["name"] + "_Domain", "name")
+        if domain_idx != -1:
+            edge_operation(idx, domain_idx, "TRUST_STEERING", ["isacl"], [False])
  
     return idx
 

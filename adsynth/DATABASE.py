@@ -251,6 +251,7 @@ def reset_DB():
     for item in NODE_GROUPS:
         NODE_GROUPS[item].clear()
 
+    # --- Clear ALL on-prem tracking structures ---
     GPLINK_OUS.clear()
     GROUP_MEMBERS.clear()
     SECURITY_GROUPS.clear()
@@ -259,12 +260,18 @@ def reset_DB():
     DISABLED_USERS.clear()
     PAW_TIERS.clear()
     S_TIERS.clear()
+    S_TIERS_LOCATIONS.clear()        # Added fix
     WS_TIERS.clear()
+    WS_TIERS_LOCATIONS.clear()       # Added fix
     COMPUTERS.clear()
     ridcount.clear()
     KERBEROASTABLES.clear()
+    FOLDERS.clear()                  # Added fix
+    DISTRIBUTION_GROUPS.clear()      # Added fix
+    SEC_DIST_GROUPS.clear()          # Added fix
+    LOCAL_ADMINS.clear()             # Added critical fix
 
-    # NEW: clear hybrid tracking structures
+    # --- Clear hybrid tracking structures ---
     SYNC_LINKS.clear()
     SYNC_IDENTITY_NODES.clear()
     CONNECTOR_HOST_NODES.clear()

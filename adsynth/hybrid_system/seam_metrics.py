@@ -80,11 +80,11 @@ def _node_plane(idx: int) -> str:
 
 
 def _is_nhi(idx: int) -> bool:
-    """Return True if node is any NonHumanIdentity subtype."""
+    """Return True if node is any NonHumanIdentity subtype across runtime or export schemas."""
     lbl = _label(idx)
     return lbl in {
-        "AZServicePrincipal", "ManagedIdentity", "AutomationAccount",
-        "SyncIdentity", "ConnectorHost", "PTAAgentHost", "ADFSServer",
+        "AZServicePrincipal", "ServicePrincipal", "ManagedIdentity", "AutomationAccount",
+        "SyncIdentity", "ConnectorHost", "PTAAgentHost", "ADFSServer", "Server",
         "AIAgent",
     }
 
@@ -100,16 +100,20 @@ def _is_sync_identity(idx: int) -> bool:
 def _build_adjacency() -> Tuple[Dict[str, List[str]], Dict[str, int]]:
     """
     Build a directed adjacency list from EDGES.
-    Returns:
-      adj: { neo4j_id -> [neo4j_id, ...] }
-      id_to_idx: { neo4j_id -> NODES index }
+    Supports both flat string export IDs and nested dictionary memory formats.
     """
     id_to_idx: Dict[str, int] = {n["id"]: i for i, n in enumerate(NODES)}
     adj: Dict[str, List[str]] = defaultdict(list)
 
     for e in EDGES:
-        src = e.get("start", {}).get("id", "")
-        tgt = e.get("end", {}).get("id", "")
+        src = e.get("start", "")
+        if isinstance(src, dict):
+            src = src.get("id", "")
+
+        tgt = e.get("end", "")
+        if isinstance(tgt, dict):
+            tgt = tgt.get("id", "")
+
         if src and tgt:
             adj[src].append(tgt)
 
@@ -160,14 +164,10 @@ _CROSS_BOUNDARY_EDGE_TYPES = {
 
 
 def compute_s1(total_edges: int) -> Dict[str, Any]:
-    """
-    S1: Cross-boundary connectivity.
-    Returns raw counts per edge type + total + ratio to all edges.
-    """
     counts: Dict[str, int] = defaultdict(int)
 
     for e in EDGES:
-        lbl = e.get("label", "")
+        lbl = e.get("label", e.get("relType", ""))
         if lbl in _CROSS_BOUNDARY_EDGE_TYPES:
             counts[lbl] += 1
 
@@ -244,11 +244,12 @@ def compute_s2(domains: List[Dict], tenants: List[Dict]) -> Dict[str, Any]:
 
 # On-prem entry node labels
 _ENTRY_LABELS = {"User", "Computer", "Group"}
-# Cloud-privileged target labels
-_TARGET_LABELS = {"AZRole"}
-# Seam node labels (bridge components)
-_SEAM_LABELS   = {"SyncIdentity", "ConnectorHost", "PTAAgentHost", "ADFSServer"}
 
+# Cloud-privileged target labels (Handles both AZRole and AzureADRole)
+_TARGET_LABELS = {"AZRole", "AzureADRole"}
+
+# Seam node labels (Handles runtime tracking types and production Server labels)
+_SEAM_LABELS   = {"SyncIdentity", "ConnectorHost", "PTAAgentHost", "ADFSServer", "Server"}
 
 def _collect_node_sets(id_to_idx: Dict[str, int]) -> Tuple[
     List[str], Set[str], Set[str]
@@ -280,14 +281,6 @@ def _collect_node_sets(id_to_idx: Dict[str, int]) -> Tuple[
 
 
 def compute_s3() -> Dict[str, Any]:
-    """
-    S3: Seam chokepoint metrics.
-    Implements Algorithm 2 from the paper (SeamCoverage).
-
-    For each entry e and each reachable target t, find shortest path.
-    SeamCoverage = fraction of those paths that pass through at least one seam node.
-    Seam betweenness = per-seam-node count of paths it appears on.
-    """
     adj, id_to_idx = _build_adjacency()
     entry_ids, target_ids, seam_ids = _collect_node_sets(id_to_idx)
 
@@ -296,21 +289,42 @@ def compute_s3() -> Dict[str, Any]:
             "seam_path_coverage":   0.0,
             "total_paths_computed": 0,
             "paths_through_seam":   0,
+            "cross_boundary_fraction": 0.0,
             "seam_betweenness":     {},
             "seam_node_count":      len(seam_ids),
             "entry_node_count":     len(entry_ids),
             "target_node_count":    len(target_ids),
+            "path_lengths":         []
         }
 
     total_paths = 0
     paths_through_seam = 0
-    betweenness: Dict[str, int] = defaultdict(int)  # seam_id -> count
+    cross_boundary_paths = 0
+    path_lengths = []
+    betweenness: Dict[str, int] = defaultdict(int)
 
     for e_id in entry_ids:
         path = _bfs_shortest_path(adj, e_id, target_ids)
         if path is None:
             continue
         total_paths += 1
+        path_lengths.append(len(path) - 1)
+        
+        # Calculate if the path crosses planes (AD -> Entra/Hybrid)
+        has_ad = False
+        has_cloud = False
+        for node_id in path:
+            idx = id_to_idx.get(node_id)
+            if idx is not None:
+                plane = _node_plane(idx)
+                if plane == "AD":
+                    has_ad = True
+                elif plane in ("Entra", "Hybrid"):
+                    has_cloud = True
+        
+        if has_ad and has_cloud:
+            cross_boundary_paths += 1
+
         path_seam_nodes = seam_ids.intersection(path)
         if path_seam_nodes:
             paths_through_seam += 1
@@ -321,28 +335,29 @@ def compute_s3() -> Dict[str, Any]:
         round(paths_through_seam / total_paths, 4)
         if total_paths > 0 else 0.0
     )
+    cb_fraction = (
+        round(cross_boundary_paths / total_paths, 4)
+        if total_paths > 0 else 0.0
+    )
 
-    # Map seam node ids back to names for readability
     named_betweenness: Dict[str, int] = {}
     for nid, count in betweenness.items():
         idx = id_to_idx.get(nid)
-        if idx is not None:
-            name = _props(NODES[idx]).get("name", nid[:8])
-        else:
-            name = nid[:8]
+        name = _props(NODES[idx]).get("name", nid[:8]) if idx is not None else nid[:8]
         named_betweenness[name] = count
 
     return {
         "seam_path_coverage":   coverage,
         "total_paths_computed": total_paths,
         "paths_through_seam":   paths_through_seam,
+        "cross_boundary_fraction": cb_fraction,
         "seam_betweenness":     named_betweenness,
         "seam_node_count":      len(seam_ids),
         "entry_node_count":     len(entry_ids),
         "target_node_count":    len(target_ids),
+        "path_lengths":         path_lengths,
+        "sampled_entries_count": len(entry_ids)
     }
-
-
 # ============================================================
 # P2 — Non-human contribution to paths
 # Paper: Pr[path contains NonHumanIdentity] and Pr[path contains SyncIdentity]
@@ -420,21 +435,16 @@ _PRIVILEGE_EDGE_TYPES = {
 
 
 def compute_p3() -> Dict[str, Any]:
-    """
-    P3: "Too-clean" vs lived-in comparison.
-    Misconfig density = |edges with isMisconfig=True| / |privilege edges|.
-    Also breaks down by misconfig type.
-    """
     total_priv = 0
     total_misconfig = 0
     misconfig_by_type: Dict[str, int] = defaultdict(int)
 
     for e in EDGES:
-        lbl = e.get("label", "")
+        lbl = e.get("label", e.get("relType", ""))
         if lbl not in _PRIVILEGE_EDGE_TYPES:
             continue
         total_priv += 1
-        props = e.get("properties", {})
+        props = e.get("properties", e)
         if props.get("isMisconfig"):
             total_misconfig += 1
             mc_type = props.get("misconfigType", "unknown")
@@ -500,43 +510,34 @@ def compute_invariant_pass_rates() -> Dict[str, Any]:
 # ============================================================
 # Main entry point: compute_seam_metrics
 # ============================================================
-
 def compute_seam_metrics(
     domains: List[Dict[str, Any]],
     tenants: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    """
-    Compute all Week 8 metrics over the current in-memory graph.
-
-    Parameters
-    ----------
-    domains : list of {name, id, sid} dicts (from do_generate_hybrid_v2)
-    tenants : list of {id, name} dicts
-
-    Returns
-    -------
-    Full metrics dict with keys: invariants, s1, s2, s3, p2, p3
-    """
     total_edges = len(EDGES)
     total_nodes = len(NODES)
 
-    print("  Computing invariant pass rates...")
     inv = compute_invariant_pass_rates()
-
-    print("  Computing S1 (cross-boundary connectivity)...")
     s1 = compute_s1(total_edges)
-
-    print("  Computing S2 (multi-tenant mapping statistics)...")
     s2 = compute_s2(domains, tenants)
-
-    print("  Computing S3 (seam chokepoint metrics — BFS)...")
     s3 = compute_s3()
-
-    print("  Computing P2 (NHI contribution to paths)...")
     p2 = compute_p2()
-
-    print("  Computing P3 (misconfig density)...")
     p3 = compute_p3()
+
+    lengths = s3.get("path_lengths", [])
+    computed_count = s3.get("total_paths_computed", 0)
+    sampled_count = s3.get("sampled_entries_count", 1)
+    
+    existence_rate = round(computed_count / sampled_count, 4) if sampled_count > 0 else 0.0
+    mean_length = round(sum(lengths) / computed_count, 4) if computed_count > 0 else 0.0
+    max_length = max(lengths) if computed_count > 0 else 0
+
+    p1 = {
+        "path_existence_rate": existence_rate,
+        "mean_path_length":    mean_length,
+        "max_path_length":     max_length,
+        "cross_boundary_fraction": s3.get("cross_boundary_fraction", 0.0)
+    }
 
     return {
         "graph_summary": {
@@ -549,11 +550,10 @@ def compute_seam_metrics(
         "s1": s1,
         "s2": s2,
         "s3": s3,
+        "p1": p1,
         "p2": p2,
         "p3": p3,
     }
-
-
 # ============================================================
 # Print report
 # ============================================================

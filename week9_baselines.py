@@ -497,10 +497,12 @@ def run_week9_baselines():
         successful_runs = 0
         attempts = 0
         
+        # Move the instantiation inside the seed loop to clear memory states
         for seed in SEEDS:
             print(f"\n  [Run] {baseline['id']} seed={seed}")
             t0 = timer()
             try:
+                adsynth = ADSynth() # Fresh instance per seed/baseline run
                 metrics = _run_baseline(adsynth, baseline, seed)
                 key     = _extract_key_metrics(metrics)
                 all_runs.append(metrics)

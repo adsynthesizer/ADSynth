@@ -47,34 +47,34 @@ def run_metrics_standalone(json_path: str) -> None:
 
     print(f"Loaded: {len(NODES)} nodes, {len(EDGES)} edges from {json_path}")
 
-    # Reconstruct minimal domains/tenants lists from graph
+    # Reconstruct minimal domains/tenants lists from graph using exact enumeration indices
     domains = []
     tenants = []
-    for n in NODES:
+    for idx, n in enumerate(NODES):
         labels = n.get("labels", [])
         if not labels:
             continue
         lbl = labels[-1]
         props = n.get("properties", n)
-        if lbl == "Domain":
+        if lbl in ("Domain", "ADDomain"):
             domains.append({
                 "name": props.get("name", "unknown"),
-                "id":   props.get("objectid", ""),
-                "sid":  props.get("objectid", ""),
+                "id":   props.get("objectid", props.get("id", "")),
+                "sid":  props.get("objectid", props.get("sid", "")),
             })
-        elif lbl == "AZTenant":
+        elif lbl in ("AZTenant", "Tenant"):
             tenants.append({
-                "id":   props.get("objectid", ""),
+                "id":   props.get("objectid", props.get("id", "")),
                 "name": props.get("name", ""),
             })
 
-        # Reconstruct SYNC_IDENTITY_NODES
+        # Reconstruct SYNC_IDENTITY_NODES with the correct enumerated index
         if lbl == "SyncIdentity":
             from adsynth.DATABASE import SYNC_IDENTITY_NODES
             domain_id = props.get("domainId", "")
             tenant_id = props.get("tenantId", props.get("tenantid", ""))
             if domain_id and tenant_id:
-                SYNC_IDENTITY_NODES[(domain_id, tenant_id)] = len(NODES) - 1
+                SYNC_IDENTITY_NODES[(domain_id, tenant_id)] = idx
 
     print(f"  Domains: {len(domains)}, Tenants: {len(tenants)}")
 
